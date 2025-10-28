@@ -27,7 +27,7 @@ logging.basicConfig(
 def load_config():
     default = {
         "gemini_api_key": "",
-        "model": "gemini-2.0-flash-exp",
+        "model": "model/gemini-2.5-pro",
         "prompt_prefix": "你是一个友好的助手",
         "max_tokens": 300,
         "temperature": 0.7
