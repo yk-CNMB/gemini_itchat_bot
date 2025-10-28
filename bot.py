@@ -11,10 +11,8 @@ from google import generativeai as genai
 # ------------------------------
 # 配置文件路径
 CONFIG_FILE = "config.json"
-SESSION_FILE = "itchat.pkl"
-LOG_FILE = "bot.log"
+LOG_FILE = "chat.log"
 
-# ------------------------------
 # 初始化日志
 logging.basicConfig(
     filename=LOG_FILE,
@@ -27,8 +25,8 @@ logging.basicConfig(
 def load_config():
     default = {
         "gemini_api_key": "",
-        "model": "gemini-2.5-flash",
-        "prompt_prefix": "你是一个友好的中文智能助手",
+        "model": "gemini-2.5-pro",
+        "prompt_prefix": "",
         "max_tokens": 300,
         "temperature": 0.7
     }
@@ -38,63 +36,57 @@ def load_config():
         default.update(cfg)
     return default
 
-
 config = load_config()
 genai.configure(api_key=config["gemini_api_key"])
-model = genai.GenerativeModel(config["model"])
 
 # ------------------------------
-# 处理文本消息
-@itchat.msg_register(itchat.content.TEXT)
+# 消息处理函数
+@itchat.msg_register(['Text', 'Picture', 'Recording', 'Video', 'Attachment'])
 def handle_msg(msg):
-    user_text = msg.get("Text", "").strip()
-    if not user_text:
-        return "请发送有效内容～"
-
-    username = msg.get("FromUserName", "")
+    user_text = msg.get('Text', '')
+    username = msg.get('FromUserName', '')
     logging.info(f"收到消息: {user_text} 来自: {username}")
 
     # 构建 prompt
-    prompt = f"{config['prompt_prefix']}\n用户：{user_text}\nAI："
-
+    prompt = f"{config['prompt_prefix']}\n用户: {user_text}\nAI:"
     try:
-        response = model.generate_content(prompt)
-        text = response.text.strip() if response and response.text else "（AI无回复）"
+        reply = genai.generate_text(
+            model=config["model"],
+            prompt=prompt,
+            max_output_tokens=config["max_tokens"],
+            temperature=config["temperature"]
+        )
+        text = reply.text.strip()
     except Exception as e:
-        text = "抱歉，AI服务暂时不可用，请稍后再试。"
+        text = "抱歉，AI 服务暂时不可用"
         logging.error(f"AI 回复失败: {e}")
 
     logging.info(f"回复消息: {text}")
     return text
 
-
 # ------------------------------
-# 登录与自动重连逻辑
+# 登录与自动重连
 def login_and_run():
+    first_login = not os.path.exists("itchat.pkl")
     while True:
         try:
-            if os.path.exists(SESSION_FILE):
-                print("检测到登录缓存，尝试使用热重载登录...")
-                itchat.auto_login(hotReload=True, enableCmdQR=2)
-            else:
-                print("首次登录，生成二维码登录...")
-                itchat.auto_login(hotReload=False, enableCmdQR=2)
-
-            print("登录成功！正在监听微信消息...")
+            print("请扫码登录微信……")
+            itchat.auto_login(
+                hotReload=not first_login,  # 首次登录用 False，之后用 True
+                enableCmdQR=2,
+                loginCallback=lambda: print("登录成功回调")
+            )
+            print("登录成功！正在监听消息……")
             itchat.run(blockThread=True)
-
-        except KeyboardInterrupt:
-            print("已手动退出程序。")
-            break
         except Exception as e:
-            logging.error(f"运行出错：{e}，5秒后重试...")
-            print(f"运行出错：{e}，5秒后重试...")
+            logging.error(f"运行出错: {e}, 5秒后重连……")
             time.sleep(5)
             continue
 
-
 # ------------------------------
+# 一键后台运行提示
 if __name__ == "__main__":
-    print("建议使用后台运行：nohup python3 bot.py &")
+    print("建议使用后台运行: nohup python3 bot.py &")
     login_and_run()
+
 
