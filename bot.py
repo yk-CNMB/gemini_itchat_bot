@@ -5,7 +5,7 @@ import os
 import json
 import time
 import logging
-import itchat_uos as itchat
+import itchat_uos
 from google import generativeai as genai
 
 # ------------------------------
