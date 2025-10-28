@@ -1,6 +1,6 @@
 {
     "gemini_api_key": "AIzaSyDnTqJxkejtVKH7qpIcDGSqnl3sSb-gTCY",
-    "model": "models/gemini-2.5-pro",
+    "model": "gemini-2.5-pro",
     "prompt_prefix": "你是一个友好的助手",
     "max_tokens": 300,
     "temperature": 0.7
