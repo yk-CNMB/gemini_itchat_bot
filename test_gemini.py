@@ -1,12 +1,13 @@
 from google import generativeai as genai
 
-# 用你申请到的 API Key 替换下面内容
-genai.configure(api_key="你的_API_Key")
+# 配置 API Key
+genai.configure(api_key="你的API密钥")
 
-response = genai.generate_text(
-    model="models/gemini-2.5-pro",
-    prompt="你好，Gemini 2.5 Pro！",
-    max_output_tokens=50
-)
+# 初始化模型（推荐使用 gemini-1.5-flash）
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-print("AI 回复:", response.text)
+# 生成回复
+response = model.generate_content("你好，请介绍一下你自己。")
+
+# 输出结果
+print(response.text)
