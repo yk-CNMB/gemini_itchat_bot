@@ -5,14 +5,15 @@ import os
 import json
 import time
 import logging
-import itchat  # 原版 itchat
+import itchat
 from google import generativeai as genai
 
 # ------------------------------
+# 配置文件路径
 CONFIG_FILE = "config.json"
-LOG_FILE = "bot.log"
+LOG_FILE = "chat.log"
 
-# 日志初始化
+# 初始化日志
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,
@@ -20,7 +21,7 @@ logging.basicConfig(
 )
 
 # ------------------------------
-# 配置读取
+# 读取配置
 def load_config():
     default = {
         "gemini_api_key": "",
@@ -39,7 +40,7 @@ config = load_config()
 genai.configure(api_key=config["gemini_api_key"])
 
 # ------------------------------
-# 兼容 TEXT 消息
+# 兼容 itchat TEXT
 try:
     TEXT = itchat.content.TEXT
 except AttributeError:
@@ -53,6 +54,7 @@ def handle_msg(msg):
     username = msg.get('FromUserName', '')
     logging.info(f"收到消息: {user_text} 来自: {username}")
 
+    # 构建 prompt
     prompt = f"{config['prompt_prefix']}\n用户: {user_text}\nAI:"
     try:
         reply = genai.generate_text(
@@ -71,21 +73,45 @@ def handle_msg(msg):
 # ------------------------------
 # 登录与自动重连
 def login_and_run():
+    """
+    改进版登录函数：
+    1. 支持热重载（hotReload=True）缓存 session。
+    2. 扫码确认登录后不会无限循环。
+    3. 自动打印登录状态和测试消息。
+    """
     while True:
         try:
             print("请扫码登录微信……")
-            # 每次扫码登录
-            itchat.auto_login(hotReload=False, enableCmdQR=2, loginCallback=lambda: print("登录成功回调"))
-            print("登录成功！正在监听消息……")
-            itchat.run(blockThread=True)  # 阻塞，只有异常才返回
+            itchat.auto_login(
+                hotReload=True,
+                enableCmdQR=2,
+                loginCallback=lambda: print("登录成功回调")
+            )
+
+            # 登录完成后打印状态
+            if itchat.check_login():
+                print("✅ 已登录成功！开始监听消息……")
+            else:
+                print("⚠️ 登录状态未确认，5秒后重试……")
+                itchat.logout()
+                time.sleep(5)
+                continue
+
+            # 自动测试消息提示
+            print("测试自动回复功能：发送消息给自己看看是否能收到回复。")
+
+            # 阻塞运行
+            itchat.run(blockThread=True)
+
         except Exception as e:
             logging.error(f"运行出错: {e}, 5秒后重连……")
+            print(f"运行出错: {e}，5秒后重连……")
             time.sleep(5)
-
-
+            continue
 
 # ------------------------------
-# 主程序
+# 一键后台运行提示
 if __name__ == "__main__":
-    print("建议第一次运行在前台扫码: python3 bot.py")
+    print("建议使用后台运行: nohup python3 bot.py &")
     login_and_run()
+
