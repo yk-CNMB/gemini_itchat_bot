@@ -1,0 +1,7 @@
+{
+  "gemini_api_key": "你的GeminiAPIKey",
+  "model": "gemini-pro",
+  "prompt_prefix": "你是一个有帮助的AI助手。",
+  "max_tokens": 300,
+  "temperature": 0.7
+}
