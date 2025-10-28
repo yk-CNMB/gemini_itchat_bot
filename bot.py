@@ -12,6 +12,7 @@ from google import generativeai as genai
 # 配置文件路径
 CONFIG_FILE = "config.json"
 LOG_FILE = "chat.log"
+HOT_RELOAD_FILE = "itchat.pkl"
 
 # 初始化日志
 logging.basicConfig(
@@ -24,9 +25,9 @@ logging.basicConfig(
 # 读取配置
 def load_config():
     default = {
-        "gemini_api_key": "AIzaSyDnTqJxkejtVKH7qpIcDGSqnl3sSb-gTCY",
+        "gemini_api_key": "",
         "model": "gemini-2.5-flash",
-        "prompt_prefix": "你是一个友好的助手",
+        "prompt_prefix": "",
         "max_tokens": 300,
         "temperature": 0.7
     }
@@ -40,8 +41,15 @@ config = load_config()
 genai.configure(api_key=config["gemini_api_key"])
 
 # ------------------------------
+# 兼容 itchat TEXT
+try:
+    TEXT = itchat.content.TEXT
+except AttributeError:
+    TEXT = "Text"
+
+# ------------------------------
 # 消息处理函数
-@itchat.msg_register(['Text', 'Picture', 'Recording', 'Video', 'Attachment'])
+@itchat.msg_register(TEXT)
 def handle_msg(msg):
     user_text = msg.get('Text', '')
     username = msg.get('FromUserName', '')
@@ -53,8 +61,7 @@ def handle_msg(msg):
         reply = genai.generate_text(
             model=config["model"],
             prompt=prompt,
-            max_output_tokens=config["max_tokens"],
-            temperature=config["temperature"]
+            max_output_tokens=config["max_tokens"]
         )
         text = reply.text.strip()
     except Exception as e:
@@ -67,26 +74,27 @@ def handle_msg(msg):
 # ------------------------------
 # 登录与自动重连
 def login_and_run():
-    first_login = not os.path.exists("itchat.pkl")
+    first_login = not os.path.exists(HOT_RELOAD_FILE)
+    print(f"首次登录: {first_login}, hotReload 将设置为 {not first_login}")
+    
     while True:
         try:
             print("请扫码登录微信……")
             itchat.auto_login(
-                hotReload=not first_login,  # 首次登录用 False，之后用 True
+                hotReload=not first_login,
                 enableCmdQR=2,
                 loginCallback=lambda: print("登录成功回调")
             )
             print("登录成功！正在监听消息……")
+            first_login = False  # 登录后，将首次登录标记关闭
             itchat.run(blockThread=True)
         except Exception as e:
             logging.error(f"运行出错: {e}, 5秒后重连……")
+            print(f"运行出错: {e}, 5秒后重连……")
             time.sleep(5)
-            continue
 
 # ------------------------------
 # 一键后台运行提示
 if __name__ == "__main__":
     print("建议使用后台运行: nohup python3 bot.py &")
     login_and_run()
-
-
