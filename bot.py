@@ -37,7 +37,7 @@ def load_config():
     return default
 
 config = load_config()
-genai.configure(api_key=config["gemini_api_key"])
+genai.configure(api_key=config["AIzaSyDnTqJxkejtVKH7qpIcDGSqnl3sSb-gTCY"])
 
 # ------------------------------
 # 消息处理函数
