@@ -1,46 +1,54 @@
 #!/bin/bash
+# -----------------------------
+# update_and_run.sh
+# -----------------------------
+# 描述: 自动更新代码、安装依赖、运行微信机器人
 
-cd "$(dirname "$0")"
+# 设置项目路径
+PROJECT_DIR="$HOME/gemini_itchat_bot"
+VENV_DIR="$PROJECT_DIR/venv"
+GITHUB_REPO="https://github.com/yk-CNMB/gemini_itchat_bot.git"
 
-LOGFILE="bot.log"
-VENV="venv"
-
-# -------------------------------
-# 激活虚拟环境
-if [ ! -d "$VENV" ]; then
-    echo "创建虚拟环境..."
-    python3 -m venv "$VENV"
+# -----------------------------
+# 1. 如果项目目录不存在，克隆仓库
+if [ ! -d "$PROJECT_DIR" ]; then
+    echo "项目目录不存在，正在克隆仓库..."
+    git clone "$GITHUB_REPO" "$PROJECT_DIR"
 fi
-source "$VENV/bin/activate"
 
-# -------------------------------
-# 更新代码
-echo "拉取最新代码..."
-git pull origin main
+cd "$PROJECT_DIR" || exit 1
 
-# -------------------------------
-# 安装依赖
+# -----------------------------
+# 2. 拉取最新代码
+echo "正在拉取最新代码..."
+git fetch origin
+git reset --hard origin/main
+
+# -----------------------------
+# 3. 创建虚拟环境（如果不存在）
+if [ ! -d "$VENV_DIR" ]; then
+    echo "虚拟环境不存在，正在创建..."
+    python3 -m venv "$VENV_DIR"
+fi
+
+# -----------------------------
+# 4. 激活虚拟环境并安装依赖
+echo "激活虚拟环境..."
+source "$VENV_DIR/bin/activate"
+
+echo "升级 pip..."
+pip install --upgrade pip
+
 echo "安装依赖..."
 pip install -r requirements.txt
 
-# -------------------------------
-# 守护运行函数
-run_bot() {
-    while true; do
-        echo "启动 bot..."
-        python3 bot.py >> $LOGFILE 2>&1
-        echo "bot 崩溃或退出，5秒后重启..."
-        sleep 5
-    done
-}
+# -----------------------------
+# 5. 运行 bot.py
+echo "运行 bot.py..."
+# 后台运行方式，日志写入 bot.log
+nohup python3 bot.py > bot.log 2>&1 &
+echo "bot.py 已启动，日志文件: $PROJECT_DIR/bot.log"
 
-# -------------------------------
-# 判断登录状态
-if [ ! -f ".itchat.pkl" ]; then
-    echo "首次运行，前台扫码登录..."
-    python3 bot.py
-else
-    echo "已有登录状态，后台守护运行 bot..."
-    nohup bash -c run_bot &  # 后台守护
-    echo "机器人已启动，日志输出到 $LOGFILE"
-fi
+# -----------------------------
+# 6. 完成
+echo "更新并启动完成。"
