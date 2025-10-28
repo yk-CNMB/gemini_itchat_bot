@@ -5,13 +5,14 @@ import os
 import json
 import time
 import logging
-import itchat
+import itchat  # 使用原始 itchat，itchat-uos 可以换成 itchat
 from google import generativeai as genai
 
 # ------------------------------
 # 配置文件路径
 CONFIG_FILE = "config.json"
 LOG_FILE = "chat.log"
+CACHE_FILE = "itchat.pkl"  # hotReload 缓存文件
 
 # 初始化日志
 logging.basicConfig(
@@ -25,7 +26,7 @@ logging.basicConfig(
 def load_config():
     default = {
         "gemini_api_key": "",
-        "model": "models/gemini-2.5-pro",
+        "model": "gemini-pro",
         "prompt_prefix": "",
         "max_tokens": 300,
         "temperature": 0.7
@@ -37,30 +38,14 @@ def load_config():
     return default
 
 config = load_config()
+genai.configure(api_key=config["gemini_api_key"])
 
 # ------------------------------
-# 测试 Gemini API
-def test_gemini_api(api_key):
-    try:
-        genai.configure(api_key=api_key)
-        response = genai.generate_text(
-            model=config["model"],
-            prompt="测试 API 是否可用",
-            max_output_tokens=20
-        )
-        print("Gemini API 测试成功，回复:", response.text)
-        return True
-    except Exception as e:
-        print("Gemini API 测试失败:", e)
-        return False
-
-if not test_gemini_api(config["gemini_api_key"]):
-    print("请检查 API Key 设置")
-    exit(1)
-
-# ------------------------------
-# 微信消息类型
-TEXT = itchat.content.TEXT
+# 消息类型兼容
+try:
+    TEXT = itchat.content.TEXT
+except AttributeError:
+    TEXT = "Text"
 
 # ------------------------------
 # 消息处理函数
@@ -70,6 +55,7 @@ def handle_msg(msg):
     username = msg.get('FromUserName', '')
     logging.info(f"收到消息: {user_text} 来自: {username}")
 
+    # 构建 prompt
     prompt = f"{config['prompt_prefix']}\n用户: {user_text}\nAI:"
     try:
         reply = genai.generate_text(
@@ -88,10 +74,18 @@ def handle_msg(msg):
 # ------------------------------
 # 登录与自动重连
 def login_and_run():
+    # 判断是否存在缓存文件
+    first_login = not os.path.exists(CACHE_FILE)
+    hotReload = not first_login  # 首次登录 False，之后 True
+
     while True:
         try:
             print("请扫码登录微信……")
-            itchat.auto_login(hotReload=False, enableCmdQR=2)
+            itchat.auto_login(
+                hotReload=hotReload,
+                enableCmdQR=2,
+                loginCallback=lambda: print("登录成功回调")
+            )
             print("登录成功！正在监听消息……")
             itchat.run(blockThread=True)
         except Exception as e:
@@ -100,8 +94,8 @@ def login_and_run():
             continue
 
 # ------------------------------
-# 一键后台运行提示
 if __name__ == "__main__":
     print("建议使用后台运行: nohup python3 bot.py &")
     login_and_run()
+
 
