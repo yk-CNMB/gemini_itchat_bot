@@ -9,12 +9,11 @@ import itchat
 from google import generativeai as genai
 
 # ------------------------------
-# 配置文件路径
+# 配置路径与日志
 CONFIG_FILE = "config.json"
 LOG_FILE = "chat.log"
 HOT_RELOAD_FILE = "itchat.pkl"
 
-# 初始化日志
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,
@@ -41,21 +40,13 @@ config = load_config()
 genai.configure(api_key=config["gemini_api_key"])
 
 # ------------------------------
-# itchat 消息类型兼容
-try:
-    TEXT = itchat.content.TEXT
-except AttributeError:
-    TEXT = "Text"
-
-# ------------------------------
-# 消息处理函数
-@itchat.msg_register(TEXT)
+# 注册消息处理
+@itchat.msg_register(itchat.content.TEXT)
 def handle_msg(msg):
-    user_text = msg.get('Text', '')
-    username = msg.get('FromUserName', '')
+    user_text = msg.text
+    username = msg.fromUserName
     logging.info(f"收到消息: {user_text} 来自: {username}")
 
-    # 构建 prompt
     prompt = f"{config['prompt_prefix']}\n用户: {user_text}\nAI:"
     try:
         reply = genai.generate_text(
@@ -72,26 +63,50 @@ def handle_msg(msg):
     return text
 
 # ------------------------------
-# 登录与自动重连
-def login_and_run():
-    first_time = not os.path.exists(HOT_RELOAD_FILE)
-    while True:
+# 登录函数（带防循环逻辑）
+def safe_login():
+    """确保不会无限循环登录"""
+    for attempt in range(3):
         try:
-            print("请扫码登录微信……" if first_time else "尝试恢复登录……")
+            first_time = not os.path.exists(HOT_RELOAD_FILE)
+            print("首次登录，生成二维码..." if first_time else "尝试使用缓存登录...")
+
             itchat.auto_login(
-                hotReload=not first_time,  # 首次登录 False, 后续 True
+                hotReload=not first_time,
                 enableCmdQR=2,
-                loginCallback=lambda: print("登录成功回调")
+                loginCallback=lambda: print("✅ 微信登录成功！"),
+                exitCallback=lambda: print("⚠️ 微信已退出。")
             )
-            print("登录成功！正在监听消息……")
-            itchat.run(blockThread=True)
+
+            if itchat.originInstance.isLogging:
+                print("登录状态异常，重新尝试...")
+                time.sleep(3)
+                continue
+
+            print("登录成功，开始监听消息。")
+            return True
         except Exception as e:
-            logging.error(f"运行出错: {e}, 5秒后重连……")
+            logging.error(f"登录出错: {e}")
             time.sleep(5)
-            continue
+    print("登录失败，请检查网络或微信状态。")
+    return False
 
 # ------------------------------
-# 程序入口
+def main_loop():
+    """主循环"""
+    while True:
+        if safe_login():
+            try:
+                itchat.run(blockThread=True)
+            except Exception as e:
+                logging.error(f"运行出错: {e}")
+                print("运行出错，5 秒后重启登录...")
+                time.sleep(5)
+        else:
+            print("连续登录失败，等待 10 秒后重试。")
+            time.sleep(10)
+
+# ------------------------------
 if __name__ == "__main__":
-    print("建议使用后台运行: nohup python3 bot.py &")
-    login_and_run()
+    print("建议后台运行: nohup python3 bot.py &")
+    main_loop()
