@@ -1,0 +1,7 @@
+{
+  "admin_users": [],
+  "reply_prefix": "!ai",
+  "model_name": "gemini-1.5-pro",
+  "max_output_tokens": 512,
+  "prompt_template": "You are a helpful assistant. {history}\\nUser: {message}\\nAssistant:"
+}
