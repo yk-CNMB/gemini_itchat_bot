@@ -74,7 +74,7 @@ def login_and_run():
     while True:
         try:
             print("请扫码登录微信……")
-            itchat.auto_login(hotReload=True, enableCmdQR=2, loginCallback=lambda: print("登录成功回调"))
+            itchat.auto_login(hotReload=False, enableCmdQR=2, loginCallback=lambda: print("登录成功回调"))
             print("登录成功！正在监听消息……")
             itchat.run(blockThread=True)
         except Exception as e:
