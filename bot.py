@@ -71,15 +71,17 @@ def handle_msg(msg):
 # ------------------------------
 # 登录与自动重连
 def login_and_run():
-    try:
-        print("请扫码登录微信……")
-        itchat.auto_login(hotReload=True, enableCmdQR=2, loginCallback=lambda: print("登录成功回调"))
-        print("登录成功！正在监听消息……")
-        itchat.run(blockThread=True)
-    except Exception as e:
-        logging.error(f"运行出错: {e}, 5秒后重连……")
-        time.sleep(5)
-        login_and_run()  # 只有出错才重试
+    while True:
+        try:
+            print("请扫码登录微信……")
+            # 每次扫码登录
+            itchat.auto_login(hotReload=False, enableCmdQR=2, loginCallback=lambda: print("登录成功回调"))
+            print("登录成功！正在监听消息……")
+            itchat.run(blockThread=True)  # 阻塞，只有异常才返回
+        except Exception as e:
+            logging.error(f"运行出错: {e}, 5秒后重连……")
+            time.sleep(5)
+
 
 
 # ------------------------------
