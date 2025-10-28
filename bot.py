@@ -25,11 +25,11 @@ logging.basicConfig(
 # 读取配置
 def load_config():
     default = {
-        "gemini_api_key": "",
-        "model": "gemini-2.5-flash",
-        "prompt_prefix": "",
-        "max_tokens": 300,
-        "temperature": 0.7
+    "gemini_api_key": "AIzaSyDnTqJxkejtVKH7qpIcDGSqnl3sSb-gTCY",
+    "model": "gemini-2.5-flash",
+    "prompt_prefix": "你是一个友好的助手",
+    "max_tokens": 300,
+    "temperature": 0.7
     }
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
