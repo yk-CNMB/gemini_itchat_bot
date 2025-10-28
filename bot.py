@@ -5,7 +5,12 @@ import os
 import json
 import time
 import logging
-import itchat
+
+try:
+    import itchat_uos as itchat
+except ImportError:
+    import itchat
+
 from google import generativeai as genai
 
 # ------------------------------
@@ -40,8 +45,13 @@ config = load_config()
 genai.configure(api_key=config["gemini_api_key"])
 
 # ------------------------------
-# 注册消息处理
-@itchat.msg_register(itchat.content.TEXT)
+# 消息注册兼容
+try:
+    TEXT = itchat.content.TEXT
+except AttributeError:
+    TEXT = 'Text'
+
+@itchat.msg_register(TEXT)
 def handle_msg(msg):
     user_text = msg.text
     username = msg.fromUserName
