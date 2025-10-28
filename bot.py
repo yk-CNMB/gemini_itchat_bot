@@ -5,16 +5,14 @@ import os
 import json
 import time
 import logging
-import subprocess
-import itchat
-from itchat.content import TEXT
+import itchat  # 原版 itchat
 from google import generativeai as genai
 
 # ------------------------------
 CONFIG_FILE = "config.json"
-LOG_FILE = "chat.log"
-SCRIPT_FILE = "bot.py"
+LOG_FILE = "bot.log"
 
+# 日志初始化
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,
@@ -22,14 +20,14 @@ logging.basicConfig(
 )
 
 # ------------------------------
+# 配置读取
 def load_config():
     default = {
         "gemini_api_key": "",
         "model": "gemini-pro",
         "prompt_prefix": "",
         "max_tokens": 300,
-        "temperature": 0.7,
-        "github_repo": ""  # 用于一键更新
+        "temperature": 0.7
     }
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -41,6 +39,14 @@ config = load_config()
 genai.configure(api_key=config["gemini_api_key"])
 
 # ------------------------------
+# 兼容 TEXT 消息
+try:
+    TEXT = itchat.content.TEXT
+except AttributeError:
+    TEXT = "Text"
+
+# ------------------------------
+# 消息处理函数
 @itchat.msg_register(TEXT)
 def handle_msg(msg):
     user_text = msg.get('Text', '')
@@ -63,20 +69,7 @@ def handle_msg(msg):
     return text
 
 # ------------------------------
-def update_from_github():
-    """从 GitHub 更新自身代码"""
-    if not config.get("github_repo"):
-        print("未配置 github_repo，跳过更新")
-        return
-    try:
-        subprocess.run(["git", "pull", "origin", "main"], check=True)
-        subprocess.run(["pip", "install", "-r", "requirements.txt"], check=True)
-        print("更新完成！请重新启动 bot.py")
-        exit(0)
-    except Exception as e:
-        logging.error(f"更新失败: {e}")
-
-# ------------------------------
+# 登录与自动重连
 def login_and_run():
     while True:
         try:
@@ -90,7 +83,7 @@ def login_and_run():
             continue
 
 # ------------------------------
+# 主程序
 if __name__ == "__main__":
-    print("建议使用后台运行: nohup python3 bot.py &")
-    update_from_github()
+    print("建议第一次运行在前台扫码: python3 bot.py")
     login_and_run()
