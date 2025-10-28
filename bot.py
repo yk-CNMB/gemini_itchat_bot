@@ -5,14 +5,14 @@ import os
 import json
 import time
 import logging
-import itchat  # 使用原始 itchat，itchat-uos 可以换成 itchat
+import itchat
 from google import generativeai as genai
 
 # ------------------------------
 # 配置文件路径
 CONFIG_FILE = "config.json"
 LOG_FILE = "chat.log"
-CACHE_FILE = "itchat.pkl"  # hotReload 缓存文件
+HOT_RELOAD_FILE = "itchat.pkl"
 
 # 初始化日志
 logging.basicConfig(
@@ -41,7 +41,7 @@ config = load_config()
 genai.configure(api_key=config["gemini_api_key"])
 
 # ------------------------------
-# 消息类型兼容
+# itchat 消息类型兼容
 try:
     TEXT = itchat.content.TEXT
 except AttributeError:
@@ -74,15 +74,12 @@ def handle_msg(msg):
 # ------------------------------
 # 登录与自动重连
 def login_and_run():
-    # 判断是否存在缓存文件
-    first_login = not os.path.exists(CACHE_FILE)
-    hotReload = not first_login  # 首次登录 False，之后 True
-
+    first_time = not os.path.exists(HOT_RELOAD_FILE)
     while True:
         try:
-            print("请扫码登录微信……")
+            print("请扫码登录微信……" if first_time else "尝试恢复登录……")
             itchat.auto_login(
-                hotReload=hotReload,
+                hotReload=not first_time,  # 首次登录 False, 后续 True
                 enableCmdQR=2,
                 loginCallback=lambda: print("登录成功回调")
             )
@@ -94,8 +91,7 @@ def login_and_run():
             continue
 
 # ------------------------------
+# 程序入口
 if __name__ == "__main__":
     print("建议使用后台运行: nohup python3 bot.py &")
     login_and_run()
-
-
